@@ -14,10 +14,11 @@
     });
   };
 
-  const syncTrack = (fileName) => {
+  const syncTrack = (fileName, bpm) => {
+    const label = bpm ? `${bpm} BPM · ${fileName || ''}` : fileName || '';
     document.querySelectorAll('[data-portals-trackname]').forEach((el) => {
-      el.textContent = fileName || '';
-      el.title = fileName || '';
+      el.textContent = label;
+      el.title = label;
     });
   };
 
@@ -48,13 +49,13 @@
 
   window.addEventListener('portals:view', (event) => syncView(event.detail?.view));
   window.addEventListener('portals:state', (event) => {
-    const { status: state, fileName, message } = event.detail || {};
-    syncTrack(fileName);
+    const { status: state, fileName, message, bpm } = event.detail || {};
+    syncTrack(fileName, bpm);
     if (state === 'error' && message) {
       document.querySelectorAll('[data-portals-trackname]').forEach((el) => {
         el.textContent = message;
         setTimeout(() => {
-          if (el.isConnected) el.textContent = fileName || '';
+          if (el.isConnected && el.textContent === message) syncTrack(fileName, bpm);
         }, 4000);
       });
     }

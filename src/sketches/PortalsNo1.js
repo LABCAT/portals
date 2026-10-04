@@ -1,4 +1,4 @@
-import { createPortalFlight } from '../lib/portalFlight.js';
+import { createPortalFlight, PORTAL_DESIGNS } from '../lib/portalFlight.js';
 
 // #PortalsNo1 — bespoke custom. Ambient portal flight for now; the fixed
 // track + MIDI cues land here later (kick → warp punch, sections → palette
@@ -48,7 +48,8 @@ const loop = (nowMs) => {
       kick: Math.max(0, Math.sin((t * Math.PI) / 1.4)),
       playing: true,
     },
-    synthBars
+    synthBars,
+    Math.floor(t / 8) % PORTAL_DESIGNS.length
   );
   window.requestAnimationFrame(loop);
 };

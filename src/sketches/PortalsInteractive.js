@@ -3,7 +3,8 @@ import p5 from 'p5';
 import '@lib/p5.audioReact.js';
 import '../lib/p5.fps.js';
 import initCapture from '@labcat2020/p5.audioreactive-capture';
-import { createPortalFlight } from '../lib/portalFlight.js';
+import { createPortalFlight, PORTAL_DESIGNS } from '../lib/portalFlight.js';
+import { guess } from 'web-audio-beat-detector';
 
 // Future customs: fixed `PortalsNo1.mp3 + .mid` in public/audio/ wired via
 // loadSong() + scheduleCueSet(). Upload stays raw Web Audio — no MIDI needed.
@@ -27,6 +28,7 @@ const sketch = (p) => {
   p.isPlaying = false;
   p.audioReady = false;
   p.audioFileName = '';
+  p.beat = null;
   p.bassLo = 0;
   p.bassHi = 0;
   p.trebLo = 0;
@@ -124,7 +126,14 @@ const sketch = (p) => {
 
   p.emitPortalsState = (state, message) => {
     window.dispatchEvent(
-      new CustomEvent('portals:state', { detail: { status: state, fileName: p.audioFileName, message } })
+      new CustomEvent('portals:state', {
+        detail: {
+          status: state,
+          fileName: p.audioFileName,
+          message,
+          bpm: p.beat ? Math.round(p.beat.bpm) : 0,
+        },
+      })
     );
     window.dispatchEvent(new CustomEvent('labcat:playback', { detail: { playing: state === 'playing' } }));
   };
@@ -169,7 +178,24 @@ const sketch = (p) => {
     }
     p.kickEnv *= 0.9;
 
-    return { energy: p.sEnergy, treble: p.sTreb, kick: p.kickEnv, playing: p.isPlaying };
+    // Beat-grid pulse: exact phase off the detected BPM, sharp attack on
+    // the beat decaying through the bar. Used whenever detection produced
+    // a grid — a wrong-but-steady grid still breathes musically, and the
+    // live transient fills in (and takes over fully without a grid).
+    let grid = 0;
+    const beat = p.beat;
+    const gridded = beat && beat.confidence >= 0.05;
+    if (gridded && p.actx) {
+      const trackTime = p.isPlaying ? p.actx.currentTime - p.startedAt : p.pauseOffset;
+      const rel = trackTime - beat.firstBeat;
+      if (rel >= 0) {
+        const phase = (rel / beat.period) % 1;
+        grid = Math.pow(1 - phase, 2.5);
+      }
+    }
+    const kick = gridded ? Math.max(grid, p.kickEnv * 0.5) : p.kickEnv;
+
+    return { energy: p.sEnergy, treble: p.sTreb, kick, playing: p.isPlaying };
   };
 
   // Per-bar levels (64) for the portal rings: grouped bin means, snappy
@@ -251,6 +277,18 @@ const sketch = (p) => {
       await p.ensureCtx();
       const raw = await file.arrayBuffer();
       p.audioBuffer = await p.actx.decodeAudioData(raw);
+      // Real BPM via web-audio-beat-detector (float tempo — rounded bpm
+      // would drift off-grid by track end). Falls back to null → the
+      // live transient detector carries the visuals instead.
+      try {
+        const g = await guess(p.audioBuffer);
+        p.beat =
+          Number.isFinite(g.tempo) && g.tempo >= 60 && g.tempo <= 200 && Number.isFinite(g.offset)
+            ? { bpm: g.tempo, period: 60 / g.tempo, firstBeat: Math.max(0, g.offset), confidence: 1 }
+            : null;
+      } catch {
+        p.beat = null;
+      }
       p.audioFileName = file.name;
       p.audioReady = true;
       p.pauseOffset = 0;
@@ -329,10 +367,19 @@ const sketch = (p) => {
   p.draw = () => {
     if (p.view === 'portal') {
       if (p.portal) {
+        // Design switches every 4 bars off the detected grid; without a
+        // grid (or paused) it holds the current look.
+        let design = 0;
+        const beat = p.beat;
+        if (beat && p.isPlaying && p.actx) {
+          const rel = p.actx.currentTime - p.startedAt - beat.firstBeat;
+          if (rel >= 0) design = Math.floor(rel / (beat.period * 16)) % PORTAL_DESIGNS.length;
+        }
         p.portal.render(
           p.millis(),
           p.audioReady ? p.sampleFx() : null,
-          p.audioReady ? p.getBarLevels() : null
+          p.audioReady ? p.getBarLevels() : null,
+          design
         );
       }
       return;

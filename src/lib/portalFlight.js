@@ -1,13 +1,16 @@
 import * as THREE from 'three';
+import { createHelix } from './helix.js';
+import { createLattice } from './lattice.js';
+import { createGates } from './gates.js';
 
-// Portals flight — hyperspace warp dive. Dense blue-white streaks radiate
-// from a dark vanishing point and stream past the camera; the spectrum
-// rides along as rings of radial bars (64 bins a ring, moments travelling
-// at you). No camera shake, no FOV tricks — smooth forward motion only.
-//
-// `render(nowMs, fx, levels)` — fx is { energy, treble, kick, playing } (or
-// null when idle); levels is a 64-array of 0..1 (or null). Idle or paused
-// holds a still frame with live mouse-look.
+// Portals switcher — one shared renderer, four structural designs on the
+// same concept (tunnels you fly through, driven by the spectrum):
+//   Prism — rainbow bar tunnel + warp streaks (the reference look)
+//   Helix — barber-pole spiral ribbons winding down the tunnel
+//   Lattice — wireframe tunnel walls, rails lit by their bin
+//   Gates — minimal neon torus gates streaming at you
+// The sketch switches design every 4 bars off the beat grid.
+export const PORTAL_DESIGNS = [{ name: 'Prism' }, { name: 'Helix' }, { name: 'Lattice' }, { name: 'Gates' }];
 
 const BARS = 64;
 const RINGS = 14;
@@ -35,28 +38,18 @@ const makeGlowTexture = () => {
   return tex;
 };
 
-export const createPortalFlight = (canvas) => {
-  const mouse = {
-    x: window.innerWidth * 0.5,
-    y: window.innerHeight * 0.5,
-    tx: window.innerWidth * 0.5,
-    ty: window.innerHeight * 0.5,
-  };
+const createPrism = () => {
+  const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x000000, 0.4);
 
   const camera = new THREE.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.01, 1000);
   camera.rotation.y = Math.PI;
   camera.position.z = 0.35;
 
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x000000, 0.4);
-
-  // Dark vanishing point with a small hot core.
   const glow = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: makeGlowTexture(), fog: false, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })
+    new THREE.SpriteMaterial({ map: makeGlowTexture(), fog: false, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false })
   );
   glow.position.z = FAR_Z - 0.05;
   glow.scale.set(0.22, 0.22, 1);
@@ -73,7 +66,6 @@ export const createPortalFlight = (canvas) => {
     mesh.setColorAt(idx, tmpColor.setRGB(0, 0, 0));
   };
 
-  // Spectrum rings: one instanced box per bar per ring.
   const RING_COUNT = RINGS * BARS;
   const ringsMesh = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, 1, 1),
@@ -87,21 +79,14 @@ export const createPortalFlight = (canvas) => {
   ringsMesh.instanceMatrix.needsUpdate = true;
   if (ringsMesh.instanceColor) ringsMesh.instanceColor.needsUpdate = true;
 
-  // Rolling history: fresh spectrum pushed in every frame, so the
-  // nearest ring is always NOW and older moments trail behind it down
-  // the tunnel — immediate like the spectrum view, travel included.
   const hist = [];
   for (let k = 0; k < RINGS; k++) hist.push(new Float32Array(BARS));
 
-  // Ring slots: positions only — content comes from the rolling history,
-  // assigned nearest-first each frame so the closest ring is always NOW.
   const slots = [];
   for (let k = 0; k < RINGS; k++) {
     slots.push({ idx: k, z: FAR_Z - (k / RINGS) * SPAN });
   }
 
-  // Warp streaks: radial slivers, brightness + length driven by the bin at
-  // their angle. The field streams toward the camera.
   const streaksMesh = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, 1, 1),
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -128,8 +113,8 @@ export const createPortalFlight = (canvas) => {
   if (streaksMesh.instanceColor) streaksMesh.instanceColor.needsUpdate = true;
 
   const onMouseMove = (e) => {
-    mouse.tx = e.clientX;
-    mouse.ty = e.clientY;
+    mouse.tx = e.clientX / window.innerWidth;
+    mouse.ty = e.clientY / window.innerHeight;
   };
   window.addEventListener('mousemove', onMouseMove);
 
@@ -137,30 +122,26 @@ export const createPortalFlight = (canvas) => {
   let rot = 0;
   const TWO_PI = Math.PI * 2;
 
-  const render = (nowMs, fx = null, levels = null) => {
+  const update = (nowMs, fx = null, levels = null) => {
     const live = fx && fx.playing;
     const held = !live;
-    const t = nowMs / 1000;
-    const st = held ? 0 : t;
+    const st = held ? 0 : nowMs / 1000;
     const dt = lastMs < 0 ? 0.016 : Math.max(0, Math.min(0.05, (nowMs - lastMs) / 1000));
     lastMs = nowMs;
 
     mouse.x += (mouse.tx - mouse.x) / 50;
     mouse.y += (mouse.ty - mouse.y) / 50;
-    const rx = mouse.x / window.innerWidth;
-    const ry = mouse.y / window.innerHeight;
+    const rx = mouse.x;
+    const ry = mouse.y;
 
     const energy = live ? fx.energy : 0;
     const kick = live ? Math.min(1, fx.kick * 1.2) : 0;
     const pulse = held ? 0.5 : Math.max(0.5 + 0.5 * Math.sin((st * Math.PI * 2) / 9), kick);
     const speed = BASE_SPEED + energy * 1.4 + kick * 2.0;
     const radius = BASE_RADIUS * (1 + energy * 0.22 + kick * 0.12);
-    // Whole-field kick flash: the tunnel flares with each hit.
     const flash = live ? kick * 0.08 : 0;
 
     if (!held) {
-      // Slow rotation so no sector sits still for long — rings and
-      // streaks share it so the data stays aligned.
       rot += dt * ((Math.PI * 2) / 24) * (0.7 + 0.6 * energy);
       for (const slot of slots) {
         slot.z -= speed * dt;
@@ -184,9 +165,6 @@ export const createPortalFlight = (canvas) => {
     const glowScale = 0.22 * (1 + 0.15 * pulse);
     glow.scale.set(glowScale, glowScale, 1);
 
-    // Spectrum rings: radial bars, stable sectors (bin i always at angle
-    // i — bass lives in one place like the spectrum view). Nearest ring
-    // shows the newest moment. Linear hot levels — loud saturates.
     const order = [...slots].sort((a, b) => a.z - b.z);
     const barW = ((2 * Math.PI * radius) / BARS) * 0.62;
     for (let r = 0; r < RINGS; r++) {
@@ -195,8 +173,6 @@ export const createPortalFlight = (canvas) => {
       const fade = Math.max(0, Math.min(1, (FAR_Z - slot.z) / 1.0));
       for (let i = 0; i < BARS; i++) {
         const e = Math.min(1, (h[i] || 0) + flash);
-        // Gamma: only true peaks reach max — sustained loud sits back
-        // instead of clipping the whole sector white.
         const eg = Math.pow(e, 1.35);
         const a = (i / BARS) * TWO_PI + rot;
         const len = 0.005 + eg * 0.12;
@@ -205,11 +181,7 @@ export const createPortalFlight = (canvas) => {
           hideInstance(ringsMesh, idx);
           continue;
         }
-        dummy.position.set(
-          Math.cos(a) * (radius + len / 2),
-          Math.sin(a) * (radius + len / 2),
-          slot.z
-        );
+        dummy.position.set(Math.cos(a) * (radius + len / 2), Math.sin(a) * (radius + len / 2), slot.z);
         dummy.rotation.set(0, 0, a - Math.PI / 2);
         dummy.scale.set(barW, len, 0.02);
         dummy.updateMatrix();
@@ -221,7 +193,6 @@ export const createPortalFlight = (canvas) => {
     ringsMesh.instanceMatrix.needsUpdate = true;
     if (ringsMesh.instanceColor) ringsMesh.instanceColor.needsUpdate = true;
 
-    // Warp streaks: radial slivers elongated outward, hot with their bin.
     for (let i = 0; i < STREAKS; i++) {
       const s = streaks[i];
       const bin = Math.floor((((s.a % TWO_PI) + TWO_PI) % TWO_PI) / TWO_PI * BARS) % BARS;
@@ -234,11 +205,7 @@ export const createPortalFlight = (canvas) => {
         continue;
       }
       const sa = s.a + rot;
-      dummy.position.set(
-        Math.cos(sa) * (s.r + len / 2),
-        Math.sin(sa) * (s.r + len / 2),
-        s.z
-      );
+      dummy.position.set(Math.cos(sa) * (s.r + len / 2), Math.sin(sa) * (s.r + len / 2), s.z);
       dummy.rotation.set(0, 0, sa - Math.PI / 2);
       dummy.scale.set(0.0012, len, 0.004);
       dummy.updateMatrix();
@@ -250,17 +217,38 @@ export const createPortalFlight = (canvas) => {
     streaksMesh.instanceMatrix.needsUpdate = true;
     if (streaksMesh.instanceColor) streaksMesh.instanceColor.needsUpdate = true;
 
-    // Mouse-look only. No shake, no FOV tricks — travel stays smooth.
     camera.position.x = rx * 0.044 - 0.025 + Math.sin(st * 0.4) * 0.002;
     camera.position.y = ry * 0.044 - 0.025 + Math.cos(st * 0.33) * 0.002;
+  };
 
-    renderer.render(scene, camera);
+  const resize = (w, h) => {
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  };
+
+  return { scene, camera, update, resize };
+};
+
+const makers = [createPrism, createHelix, createLattice, createGates];
+
+export const createPortalFlight = (canvas) => {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const designs = makers.map((make) => make());
+
+  const render = (nowMs, fx = null, levels = null, designIdx = 0) => {
+    const active = designs[designIdx % designs.length] || designs[0];
+    active.update(nowMs, fx, levels);
+    renderer.render(active.scene, active.camera);
   };
 
   const resize = () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    renderer.setSize(w, h);
+    designs.forEach((d) => d.resize(w, h));
   };
 
   return { render, resize };
