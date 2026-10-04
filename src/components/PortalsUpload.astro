@@ -1,0 +1,115 @@
+---
+// PortalsUpload — centered upload card matching the lab theme
+// (dark purple glass, cyan border, Orbitron, pink hover).
+// Hides itself while audio is playing, reappears on pause/error.
+---
+
+<div class="portals-upload" data-portals-upload>
+  <p class="portals-upload__title">Drop a track in</p>
+  <label class="portals-upload__button" for="portals-upload-input">Choose audio file</label>
+  <input id="portals-upload-input" type="file" accept="audio/*" hidden />
+  <p class="portals-upload__status" data-portals-status>Drop an MP3 anywhere — or choose a file</p>
+</div>
+
+<script>
+  const root = document.querySelector('[data-portals-upload]');
+  const input = document.getElementById('portals-upload-input');
+  const status = root?.querySelector('[data-portals-status]');
+
+  input?.addEventListener('change', () => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    window.__portalsLoadUserAudio?.(file);
+  });
+
+  // The card is the idle CTA only. Once a track is loaded, playback +
+  // track-changing live in the control panel — no pause state here.
+  window.addEventListener('portals:state', (event) => {
+    if (!root) return;
+    const { status: state, fileName, message } = event.detail || {};
+    const hasTrack = Boolean(fileName);
+    root.classList.toggle('portals-upload--hidden', hasTrack);
+    if (!status) return;
+    if (message) status.textContent = message;
+    else if (state === 'idle') status.textContent = 'Drop an MP3 anywhere — or choose a file';
+  });
+
+  // Fallback: if the sketch never booted, the lab loader would sit on
+  // screen forever — force it off and say so instead of spinning silently.
+  setTimeout(() => {
+    const loader = document.getElementById('loader');
+    if (loader && !loader.classList.contains('loading--complete')) {
+      loader.classList.add('loading--complete');
+      loader.style.display = 'none';
+    }
+    if (!window.__portalsLoadUserAudio && status) {
+      status.textContent = 'Something failed to start — open the console and send me the red lines';
+    }
+  }, 4000);
+</script>
+
+<style is:global>
+  .portals-upload {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    pointer-events: none;
+    transition: opacity 300ms ease;
+  }
+
+  .portals-upload--hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .portals-upload__title {
+    margin: 0;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: clamp(20px, 4vw, 34px);
+    letter-spacing: 0.08em;
+    color: var(--lab-white, #fff);
+    text-shadow: 0 2px 18px rgba(12, 219, 245, 0.45);
+  }
+
+  .portals-upload__button {
+    pointer-events: auto;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    color: var(--lab-white, #fff);
+    background: var(--lab-header-bg, rgba(27, 17, 77, 0.74));
+    border: 1px solid var(--lab-header-border, #0cdbf5);
+    border-radius: 999px;
+    padding: 14px 30px;
+    cursor: pointer;
+    transition:
+      color 200ms ease,
+      border-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+
+  .portals-upload__button:hover {
+    color: var(--lab-pink, #ff0cb8);
+    border-color: var(--lab-pink, #ff0cb8);
+    box-shadow: 0 0 24px rgba(255, 12, 184, 0.35);
+  }
+
+  .portals-upload__status {
+    margin: 0;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--lab-white, #fff);
+    opacity: 0.75;
+  }
+</style>

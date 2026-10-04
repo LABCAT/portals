@@ -1,0 +1,21 @@
+---
+import SketchLayout from '@labcat2020/animation-lab/layouts/SketchLayout.astro';
+import PortalsUpload from '@/components/PortalsUpload.astro';
+import PortalsViewToggle from '@/components/PortalsViewToggle.astro';
+---
+
+<SketchLayout title="Portals — Play your track" description="Upload any audio file and watch the portal react. Pure FFT, no MIDI needed." header={true} />
+
+<PortalsUpload />
+
+<PortalsViewToggle />
+
+<script>
+  import('/src/sketches/PortalsInteractive.js')
+    .then(() => {
+      console.log('Portals play sketch loaded');
+    })
+    .catch(err => {
+      console.error('Failed to load play sketch:', err);
+    });
+</script>

@@ -1,0 +1,139 @@
+---
+// PortalsViewToggle — Spectrum / Portal pills + change-track control,
+// injected into the lab control panel's collapsible content (lab package
+// stays untouched). Views sync via `portals:view`; current track via
+// `portals:state`. V key toggles views too (bound in the sketch).
+---
+
+<script>
+  const syncView = (view) => {
+    document.querySelectorAll('[data-portals-view-toggle]').forEach((root) => {
+      root.querySelectorAll('button[data-view]').forEach((btn) => {
+        btn.classList.toggle('is-active', btn.dataset.view === view);
+      });
+    });
+  };
+
+  const syncTrack = (fileName) => {
+    document.querySelectorAll('[data-portals-trackname]').forEach((el) => {
+      el.textContent = fileName || '';
+      el.title = fileName || '';
+    });
+  };
+
+  const mount = () => {
+    const panel = document.querySelector('[data-panel-content]');
+    if (!panel || panel.querySelector('[data-portals-view-toggle]')) return;
+    const root = document.createElement('div');
+    root.setAttribute('data-portals-view-toggle', '');
+    root.className = 'portals-view-toggle';
+    root.innerHTML =
+      '<button type="button" data-view="spectrum">Spectrum</button>' +
+      '<button type="button" data-view="portal" class="is-active">Portal</button>' +
+      '<label class="portals-view-toggle__upload">Change track<input type="file" accept="audio/*" hidden /></label>' +
+      '<span class="portals-view-toggle__track" data-portals-trackname></span>';
+    root.querySelectorAll('button[data-view]').forEach((btn) => {
+      btn.addEventListener('click', () => window.__portalsSetView?.(btn.dataset.view));
+    });
+    const fileInput = root.querySelector('input[type="file"]');
+    fileInput?.addEventListener('change', () => {
+      const file = fileInput.files?.[0];
+      fileInput.value = '';
+      if (!file) return;
+      window.__portalsLoadUserAudio?.(file);
+    });
+    panel.prepend(root);
+    if (window.__portalsView) syncView(window.__portalsView);
+  };
+
+  window.addEventListener('portals:view', (event) => syncView(event.detail?.view));
+  window.addEventListener('portals:state', (event) => {
+    const { status: state, fileName, message } = event.detail || {};
+    syncTrack(fileName);
+    if (state === 'error' && message) {
+      document.querySelectorAll('[data-portals-trackname]').forEach((el) => {
+        el.textContent = message;
+        setTimeout(() => {
+          if (el.isConnected) el.textContent = fileName || '';
+        }, 4000);
+      });
+    }
+  });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mount);
+  } else {
+    mount();
+  }
+</script>
+
+<style is:global>
+  .portals-view-toggle {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .portals-view-toggle button {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--lab-white, #fff);
+    background: transparent;
+    border: 1px solid var(--lab-header-border, #0cdbf5);
+    border-radius: 999px;
+    padding: 8px 14px;
+    cursor: pointer;
+    opacity: 0.65;
+    transition:
+      opacity 200ms ease,
+      color 200ms ease,
+      border-color 200ms ease;
+  }
+
+  .portals-view-toggle button:hover {
+    opacity: 1;
+  }
+
+  .portals-view-toggle button.is-active {
+    opacity: 1;
+    color: var(--lab-pink, #ff0cb8);
+    border-color: var(--lab-pink, #ff0cb8);
+  }
+
+  .portals-view-toggle__upload {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--lab-white, #fff);
+    background: transparent;
+    border: 1px dashed var(--lab-header-border, #0cdbf5);
+    border-radius: 999px;
+    padding: 8px 14px;
+    cursor: pointer;
+    opacity: 0.65;
+    white-space: nowrap;
+    transition:
+      opacity 200ms ease,
+      color 200ms ease,
+      border-color 200ms ease;
+  }
+
+  .portals-view-toggle__upload:hover {
+    opacity: 1;
+    color: var(--lab-pink, #ff0cb8);
+    border-color: var(--lab-pink, #ff0cb8);
+  }
+
+  .portals-view-toggle__track {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    color: var(--lab-white, #fff);
+    opacity: 0.6;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>

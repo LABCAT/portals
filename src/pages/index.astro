@@ -1,0 +1,20 @@
+---
+import BaseLayout from '@labcat2020/animation-lab/layouts/BaseLayout.astro';
+import { getAllSketches } from '@/sketchMetadata.js';
+
+const sketches = getAllSketches();
+---
+
+<BaseLayout title="Portals" description="Audio-reactive portal animations. Upload your track or watch the customs.">
+  <h1>Portals</h1>
+  <p>Audio-reactive portal animations.</p>
+
+  <p><a href="/play">Upload your track → /play</a> — pure FFT, no MIDI needed.</p>
+
+  <h2>Customs</h2>
+  <ul>
+    {sketches.map(sketch => (
+      <li><a href={`/${sketch.id}`}>{sketch.title}</a> — {sketch.description}</li>
+    ))}
+  </ul>
+</BaseLayout>

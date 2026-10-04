@@ -1,0 +1,33 @@
+{
+  "name": "portals",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "lint": "eslint . --ext .js,.astro",
+    "format": "prettier --write .",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@labcat2020/animation-lab": "0.2.0",
+    "@labcat2020/p5.audioreactive": "^0.2.0",
+    "@labcat2020/p5.audioreactive-capture": "^0.1.4",
+    "astro": "^6.0.8",
+    "p5": "2.2.3",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.1.0",
+    "globals": "^17.4.0",
+    "sass-embedded": "^1.98.0"
+  },
+  "engines": {
+    "node": ">=24.13.0"
+  },
+  "packageManager": "pnpm@11.25.0"
+}
