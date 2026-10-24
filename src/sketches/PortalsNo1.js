@@ -15,6 +15,7 @@ import { LOOP_TRACKS } from '../audioTracks.js';
 //   ?beats= loop length in beats (default 16 = 8s @ 120)
 //   ?auto=  1/0 auto-change look (default on unless ?seed is given)
 //   ?autoLoops= loops (4 bars each) between auto look changes (default 2)
+//   ?paletteBars= bars per colour scheme within a look (default 2, 0 = off)
 //   ?t=     freeze at a time in seconds (stills)
 //   ?uX=    override any scalar uniform, e.g. ?uGlow=0.5&uFog=0.2
 //   ?fps=0  hide the FPS badge
@@ -53,6 +54,37 @@ const sketch = (p) => {
   let autoOn = params.has('auto') ? params.get('auto') !== '0' : !params.has('seed');
   const autoLoops = Math.max(1, Number(params.get('autoLoops')) || 2);
   let loopIndex = null;
+
+  // Colour changes within a look: a new scheme every paletteBars bars,
+  // stepping through the look's 4 palettes (its own first). Like the play
+  // fade, each change dips to black and swaps at the bottom, on the bar line;
+  // look changes share those bar lines, so they dip too. Driven by the loop
+  // clock, so every look starts on its own palette and capture repeats.
+  const paletteBars = params.has('paletteBars') ? Math.max(0, Number(params.get('paletteBars')) || 0) : 2;
+  const PALETTE_KEYS = ['uDeep', 'uColA', 'uColB', 'uHot'];
+  const paletteSec = () => (paletteBars * 4 * 60) / bpm;
+  const applyPalette = (t) => {
+    if (!paletteBars) return;
+    const seg = Math.floor(t / paletteSec());
+    const n = look.palettes.length;
+    const pal = look.palettes[((seg % n) + n) % n];
+    for (const key of PALETTE_KEYS) portalShader.setUniform(key, pal[key]);
+  };
+
+  // Brightness for a colour change: a quick, shallow dip (to DIP_FLOOR, not
+  // black) DIP_OUT before each bar line and back over DIP_IN after it, eased;
+  // 1 between changes.
+  const DIP_OUT = 0.3;
+  const DIP_IN = 0.6;
+  const DIP_FLOOR = 0.12;
+  const paletteDip = (t) => {
+    if (!paletteBars) return 1;
+    const into = t - Math.floor(t / paletteSec()) * paletteSec();
+    const toNext = paletteSec() - into;
+    const x = toNext < DIP_OUT ? toNext / DIP_OUT : into < DIP_IN ? into / DIP_IN : 1;
+    return DIP_FLOOR + (1 - DIP_FLOOR) * x * x * (3 - 2 * x);
+  };
+
   const setAuto = (on) => {
     autoOn = on;
     // Recorded in the URL so a reload (which also has ?seed) keeps the mode.
@@ -82,7 +114,8 @@ const sketch = (p) => {
     }
     params.set('seed', seed);
     window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
-    if (info) info.textContent = `seed ${seed} · ${look.palette} · ${look.sides || 'round'} · ${bpm.toFixed(1)} bpm · ${look.loopSec.toFixed(2)}s`;
+    const colours = paletteBars ? look.palettes.map((pal) => pal.name).join('→') : look.palette;
+    if (info) info.textContent = `seed ${seed} · ${colours} · ${look.sides || 'round'} · ${bpm.toFixed(1)} bpm · ${look.loopSec.toFixed(2)}s`;
     console.log('[PortalsLoops]', look);
   };
 
@@ -214,8 +247,9 @@ const sketch = (p) => {
     portalShader.setUniform('uRes', [p.width * p.pixelDensity(), p.height * p.pixelDensity()]);
     portalShader.setUniform('uTime', t);
     portalShader.setUniform('uLoop', look.loopSec);
-    portalShader.setUniform('uFade', p.captureInProgress ? 1 : fadeLevel());
+    portalShader.setUniform('uFade', Math.min(paletteDip(t), p.captureInProgress ? 1 : fadeLevel()));
     for (const [name, value] of Object.entries(look.uniforms)) portalShader.setUniform(name, value);
+    applyPalette(t);
     p.plane(p.width, p.height);
   };
 

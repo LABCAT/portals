@@ -52,7 +52,7 @@ export const createPortalLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}
   const pathFreq = [pick([1, 2]), pick([1, 2, 3])];
   const pathAmp = pathFreq.map((f) => (bend * period) / (TAU * f));
 
-  return {
+  const look = {
     seed: String(seed),
     palette: palette.name,
     sides,
@@ -82,4 +82,14 @@ export const createPortalLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}
       uHot: lin(palette.hot),
     },
   };
+
+  // Palette sequence for colour changes within a look: the seed's own
+  // palette first, then 3 others. Drawn after everything else so adding it
+  // didn't change what existing seeds look like.
+  const others = PALETTES.filter((p) => p !== palette);
+  const sequence = [palette];
+  while (sequence.length < 4) sequence.push(others.splice(Math.floor(rand() * others.length), 1)[0]);
+  look.palettes = sequence.map((p) => ({ name: p.name, uDeep: lin(p.deep), uColA: lin(p.a), uColB: lin(p.b), uHot: lin(p.hot) }));
+
+  return look;
 };
