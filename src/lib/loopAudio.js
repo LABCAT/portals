@@ -14,6 +14,8 @@ const MAX_BPM = 200;
 
 export const createLoopAudio = (tracks, { onBeat } = {}) => {
   const list = tracks.map((t) => ({ ...t, buffer: null, beat: null, raw: null, missing: false }));
+  // Known tempos apply before the first play, so the flight already matches.
+  const initial = list[0]?.bpm ? { bpm: list[0].bpm, offset: list[0].firstBeat ?? 0 } : null;
   let index = 0;
   let actx = null;
   let source = null;
@@ -48,14 +50,20 @@ export const createLoopAudio = (tracks, { onBeat } = {}) => {
     return actx;
   };
 
-  // Decode + detect tempo once per track. Float tempo (not rounded) so the
-  // flight doesn't drift off the grid by the end of the track.
+  // Decode once per track. Known tracks carry their exact bpm/firstBeat;
+  // otherwise detect them. Float tempo (not rounded) so the flight doesn't
+  // drift off the grid by the end of the track. Detection finds *a* beat,
+  // not necessarily the bar's downbeat, so exact values win when we have them.
   const prepare = async (track) => {
     if (track.buffer) return true;
     const raw = track.file ? await track.file.arrayBuffer() : await track.raw;
     if (!raw) return false;
     announce(' · analysing…');
     track.buffer = await ensureCtx().decodeAudioData(raw.slice(0));
+    if (track.bpm) {
+      track.beat = { bpm: track.bpm, offset: track.firstBeat ?? 0 };
+      return true;
+    }
     try {
       const g = await guess(track.buffer);
       if (Number.isFinite(g.tempo) && g.tempo >= MIN_BPM && g.tempo <= MAX_BPM) {
@@ -142,10 +150,21 @@ export const createLoopAudio = (tracks, { onBeat } = {}) => {
 
   announce();
   setPlaying(false);
+  if (initial) queueMicrotask(() => onBeat?.(initial));
+
+  // What you hear lags the audio clock by the device's output latency (tens
+  // of ms on Windows, far more over Bluetooth): subtract it so visuals land
+  // on the beat you hear, not the one being scheduled.
+  const latency = () => actx.outputLatency || actx.baseLatency || 0;
 
   return {
-    /** Seconds into the current track while playing, else null. */
-    position: () => (playing && actx && source ? (actx.currentTime - startedAt) % source.buffer.duration : null),
+    /** Seconds into the current track as heard, while playing, else null
+     * (slightly negative just after play, before the first sound arrives). */
+    position: () => {
+      if (!playing || !actx || !source) return null;
+      const heard = actx.currentTime - startedAt - latency();
+      return heard < 0 ? heard : heard % source.buffer.duration;
+    },
     /** First-beat offset of the current track (seconds), 0 if unknown. */
     beatOffset: () => current()?.beat?.offset ?? 0,
     isPlaying: () => playing,

@@ -18,6 +18,7 @@ uniform float uTime;      // seconds (capture: frame / 60)
 uniform float uLoop;      // loop length, seconds (whole beats)
 uniform float uBeats;     // beats per loop
 uniform float uPeriod;    // units flown per loop = texture period along z
+uniform float uFade;      // 0..1 overall brightness (fade on play)
 
 uniform float uRadius;    // tube radius
 uniform float uSides;     // 0 = round tube, else polygon side count
@@ -172,7 +173,7 @@ void main() {
   // Tonemap, vignette, gamma, dither.
   col = 1.0 - exp(-col * 1.25);
   col *= 1.0 - 0.3 * dot(uv * 0.5, uv * 0.5);
-  col = pow(col, vec3(1.0 / 2.2));
+  col = pow(col, vec3(1.0 / 2.2)) * uFade;
   col += (hash21(gl_FragCoord.xy + loopT) - 0.5) / 255.0;
   gl_FragColor = vec4(col, 1.0);
 }

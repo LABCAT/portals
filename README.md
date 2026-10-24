@@ -11,7 +11,10 @@ Follow on Instagram → https://www.instagram.com/labcat2020/
 ## #PortalsNo1
 https://portals.labcat.nz/number-1/
 
-Bespoke portal flight custom. Ambient for now — fixed track + MIDI cues land here.
+Seeded GLSL nebula-tube flight (`src/shaders/portalLoop.frag`), speed locked to
+the track's BPM, a new look every 8-bar phrase. `?seed=` reproduces a look,
+`?bpm=` / `?beats=` / `?uX=` tune it; the control panel adds prev/next track,
+play your own track, auto look (hold) and new look.
 
 ## /play — interactive
 https://portals.labcat.nz/play

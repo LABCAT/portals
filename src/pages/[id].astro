@@ -11,7 +11,7 @@ export async function getStaticPaths() {
 }
 
 const { sketchInfo } = Astro.props;
-const isLoops = Astro.params.id === 'loops';
+const isLoops = sketchInfo.sketch === 'PortalsNo1.js';
 ---
 
 <SketchLayout title={sketchInfo.title} description={sketchInfo.description} header={true} trackNav={isLoops}>
@@ -21,7 +21,6 @@ const isLoops = Astro.params.id === 'loops';
 <script>
   const sketches = {
     'number-1': () => import('/src/sketches/PortalsNo1.js'),
-    loops: () => import('/src/sketches/PortalsLoops.js'),
   };
 
   const pathSegments = window.location.pathname.split('/');

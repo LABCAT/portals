@@ -1,13 +1,8 @@
 export const sketchMetadata = {
   'number-1': {
     title: '#PortalsNo1',
-    description: 'Bespoke portal flight custom — fixed track + MIDI cues land here.',
+    description: 'Seeded nebula-tube flight locked to the beat — a new look every phrase.',
     sketch: 'PortalsNo1.js',
-  },
-  loops: {
-    title: 'Portal Loops',
-    description: 'Seeded GLSL portal flights — ?seed= ?bpm= ?beats= for seamless short loops.',
-    sketch: 'PortalsLoops.js',
   },
 };
 

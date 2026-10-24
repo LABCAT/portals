@@ -42,7 +42,7 @@ export const createPortalLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}
   const pick = (arr) => arr[Math.floor(rand() * arr.length)];
 
   const palette = pick(PALETTES);
-  const sides = pick([0, 0, 0, 0, 3, 4, 6]);
+  const sides = pick([0, 0, 0, 3, 4, 5, 6]);
 
   // Speed comes from the BPM only (not the seed): `speed` tube radii pass
   // each beat, constant, and the loop is a whole number of beats.
