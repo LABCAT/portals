@@ -1,5 +1,6 @@
 ---
 import SketchLayout from '@labcat2020/animation-lab/layouts/SketchLayout.astro';
+import PortalsLoopsControls from '@/components/PortalsLoopsControls.astro';
 import { sketchMetadata } from '@/sketchMetadata.js';
 
 export async function getStaticPaths() {
@@ -10,13 +11,17 @@ export async function getStaticPaths() {
 }
 
 const { sketchInfo } = Astro.props;
+const isLoops = Astro.params.id === 'loops';
 ---
 
-<SketchLayout title={sketchInfo.title} description={sketchInfo.description} header={true} />
+<SketchLayout title={sketchInfo.title} description={sketchInfo.description} header={true} trackNav={isLoops}>
+  {isLoops && <PortalsLoopsControls slot="controls" />}
+</SketchLayout>
 
 <script>
   const sketches = {
     'number-1': () => import('/src/sketches/PortalsNo1.js'),
+    loops: () => import('/src/sketches/PortalsLoops.js'),
   };
 
   const pathSegments = window.location.pathname.split('/');

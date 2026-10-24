@@ -4,6 +4,11 @@ export const sketchMetadata = {
     description: 'Bespoke portal flight custom — fixed track + MIDI cues land here.',
     sketch: 'PortalsNo1.js',
   },
+  loops: {
+    title: 'Portal Loops',
+    description: 'Seeded GLSL portal flights — ?seed= ?bpm= ?beats= for seamless short loops.',
+    sketch: 'PortalsLoops.js',
+  },
 };
 
 export function getAllSketches() {
