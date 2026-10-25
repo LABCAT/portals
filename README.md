@@ -22,6 +22,7 @@ reload; the panel's prev/next walk the whole suite. Capture
 |---|---|
 | `/number-1` | Singularity A → B → C → Event Horizon A → … |
 | `/number-2?part=b` | starts on Event Horizon Part B (capture: that part only) |
+| `/number-3` | Continuum A → B → C → Singularity A → … |
 
 ## #PortalsNo1 Singularity
 https://portals.labcat.nz/number-1/
@@ -40,6 +41,18 @@ Seeded flight down a neon hexagonal tunnel through honeycomb gates
 lights it: every lead note changes the colour scheme (from the seed's six) and
 lights one hex cell; Part B's bass pulses the frames, Part C's stabs and arps
 flare the lasers and spark the circuits.
+
+## #PortalsNo3 Continuum
+https://portals.labcat.nz/number-3/
+
+Seeded flight down a hyperspace tunnel (`src/shaders/portalWarp.frag`), same
+speed as Singularity: lanes of starlight streaks rushing past faster than you,
+into a soft light. Every lead note flares it and turns the streaks a click;
+held notes change the colours. Thor 2, the first movement's pad, enters in
+Parts B and C: Singularity's nebula floods in and each chord changes the
+colours with Singularity's dip. Part C adds a third, fastest streak layer.
+Plucks twinkle the stars, bass breathes the tunnel, stabs flash it; between
+parts it spins up and burns to white.
 
 ## /play — interactive
 https://portals.labcat.nz/play

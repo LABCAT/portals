@@ -7,9 +7,11 @@ import { SUITE, SUITE_PARTS } from '../audioTracks.js';
 import { sketchMetadata } from '../sketchMetadata.js';
 import { createSingularity } from '../movements/singularity.js';
 import { createEventHorizon } from '../movements/eventHorizon.js';
+import { createContinuum } from '../movements/continuum.js';
 
 // Intergalactic Portals — one player for the whole suite, behind every
-// movement's page (/number-1 Singularity, /number-2 Event Horizon). Each
+// movement's page (/number-1 Singularity, /number-2 Event Horizon,
+// /number-3 Continuum). Each
 // movement is a shader + seeded look (src/movements/); this host owns the
 // clock, the audio and the controls. All parts of all movements are one
 // track list, so a part flows gaplessly into the next even across
@@ -45,7 +47,7 @@ const routeOf = (movement) => SUITE.find((m) => m.number === movement)?.route;
 
 const sketch = (p) => {
   const params = new URLSearchParams(window.location.search);
-  const movements = { 1: createSingularity(params), 2: createEventHorizon(params) };
+  const movements = { 1: createSingularity(params), 2: createEventHorizon(params), 3: createContinuum(params) };
   const tracks = SUITE_PARTS.filter((t) => movements[t.movement]);
   const fixedBpm = Number(params.get('bpm')) || null;
   let bpm = fixedBpm || 120;
@@ -125,7 +127,7 @@ const sketch = (p) => {
       if (autoOn) setSeed(randomSeed());
     },
   });
-  // Every part's notes (only Event Horizon has any) load up front.
+  // Every part's notes (Event Horizon's and Continuum's) load up front.
   tracks.forEach((t) => movements[t.movement].prepare?.(t));
 
   const setSeed = (next) => {

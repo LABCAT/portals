@@ -9,6 +9,11 @@ export const sketchMetadata = {
     description: 'Event Horizon, movement two of Intergalactic Portals: a neon honeycomb portal zooming into itself, lit note by note by the lead.',
     sketch: 'PortalsSuite.js',
   },
+  'number-3': {
+    title: '#PortalsNo3',
+    description: 'Continuum, movement three of Intergalactic Portals: a flight down a hyperspace tunnel of rushing starlight, flooded with the first movement\'s nebula by its pad.',
+    sketch: 'PortalsSuite.js',
+  },
 };
 
 export function getAllSketches() {
