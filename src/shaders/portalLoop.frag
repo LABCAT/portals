@@ -41,6 +41,10 @@ uniform vec3 uColA;
 uniform vec3 uColB;
 uniform vec3 uHot;
 
+// Fly-through between parts: the camera keeps its speed, only the ring moves.
+uniform float uRing;      // 0 none; 0 → 1 over a part's last bar, 1 = passing through
+uniform float uFlash;     // 1 → 0: the light clearing in the next part
+
 float gPhase;
 
 vec2 path(float z) {
@@ -112,6 +116,18 @@ float tubeHit(vec2 o, vec2 d) {
   return t;
 }
 
+// Distance from the tube's axis in the tube's own shape (1 = on the wall).
+float shapeR(vec2 q) {
+  if (uSides < 2.5) return length(q);
+  float r = 0.0;
+  for (int k = 0; k < 8; k++) {
+    if (float(k) >= uSides) break;
+    float ang = TAU * float(k) / uSides;
+    r = max(r, dot(q, vec2(cos(ang), sin(ang))));
+  }
+  return r;
+}
+
 void main() {
   float loopT = mod(uTime, uLoop);
   gPhase = loopT / uLoop;
@@ -169,6 +185,27 @@ void main() {
   // Gaussian falloff keeps the near walls saturated, only the distance glows.
   float far = depth * uDepth;
   col = mix(col, core, 1.0 - exp(-far * far));
+
+  // Fly-through ring: a band of light just inside the wall, in the tube's
+  // shape, that emerges from the core and rushes at the camera (distance
+  // falls with the square of the time left, so it accelerates), passing
+  // over it on the bar line as everything burns to white. The new part
+  // opens out of that white (uFlash).
+  if (uRing > 0.0) {
+    float left = 1.0 - uRing;
+    float zr = cz + 0.05 + 28.0 * left * left;
+    float tr = (zr - ro.z) / max(rd.z, 1e-4);
+    if (tr > 0.0 && tr < t) {
+      float r = shapeR(ro.xy + rd.xy * tr - path(zr));
+      // Never thinner than ~1.5px, so it doesn't sparkle far away.
+      float width = max(0.03 + 0.08 * uRing, 1.5 * tr * pixAng);
+      float band = exp(-pow((r - 0.82 * uRadius) / width, 2.0));
+      col += mix(uHot, uColB, 0.25) * band * (2.5 + 6.0 * uRing) * smoothstep(0.0, 0.15, uRing);
+    }
+    col *= 1.0 + 1.5 * uRing * uRing * uRing;
+  }
+  float white = max(pow(uRing, 6.0), uFlash * uFlash * (3.0 - 2.0 * uFlash));
+  col = mix(col, core * 3.0, white);
 
   // Tonemap, vignette, gamma, dither.
   col = 1.0 - exp(-col * 1.25);

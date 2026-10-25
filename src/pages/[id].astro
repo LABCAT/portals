@@ -11,7 +11,7 @@ export async function getStaticPaths() {
 }
 
 const { sketchInfo } = Astro.props;
-const isLoops = sketchInfo.sketch === 'PortalsNo1.js';
+const isLoops = sketchInfo.sketch === 'PortalsSuite.js';
 ---
 
 <SketchLayout title={sketchInfo.title} description={sketchInfo.description} header={true} trackNav={isLoops}>
@@ -20,7 +20,10 @@ const isLoops = sketchInfo.sketch === 'PortalsNo1.js';
 
 <script>
   const sketches = {
-    'number-1': () => import('/src/sketches/PortalsNo1.js'),
+    // One suite player behind every movement's page (it switches movements
+    // in place, without a reload).
+    'number-1': () => import('/src/sketches/PortalsSuite.js'),
+    'number-2': () => import('/src/sketches/PortalsSuite.js'),
   };
 
   const pathSegments = window.location.pathname.split('/');

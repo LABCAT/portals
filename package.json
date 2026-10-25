@@ -13,9 +13,10 @@
     "check": "astro check"
   },
   "dependencies": {
-    "@labcat2020/animation-lab": "^0.2.2",
+    "@labcat2020/animation-lab": "^0.2.3",
     "@labcat2020/p5.audioreactive": "^0.2.0",
     "@labcat2020/p5.audioreactive-capture": "^0.1.4",
+    "@tonejs/midi": "^2.0.28",
     "astro": "^6.0.8",
     "p5": "2.2.3",
     "three": "^0.170.0",
