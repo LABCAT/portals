@@ -60,7 +60,7 @@ export const createWarpLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}) 
   // tube is per period, so it's seamless.
   const period = beats * speed;
 
-  return {
+  const look = {
     seed: String(seed),
     bpm,
     beats,
@@ -70,15 +70,20 @@ export const createWarpLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}) 
     click: range(0.15, 0.35) * pick([1, -1]),
     uniforms: {
       uPeriod: period,
-      uFocal: range(1.1, 1.5),
+      // Wide, normal or long lens: picks that show, not a range that doesn't.
+      uFocal: pick([0.9, 1.3, 1.8]),
       uDepth: range(0.025, 0.045),
       uCells: pick([6, 8, 10]),
       uStretch: range(1.5, 3),
       uTwist: pick([1, 1, 2]) * pick([1, -1]),
       uSpin: pick([0, 1, -1]),
-      uLanes: pick([24, 32, 40]),
-      uStreak: range(2, 5),
+      uLanes: pick([16, 32, 48]),
+      // Short dashes or long trails.
+      uStreak: pick([1.5, 5]),
       ...palettes[0].colours,
     },
   };
+  // The far light stays the same size on screen whatever the lens.
+  look.uniforms.uDepth *= 1.3 / look.uniforms.uFocal;
+  return look;
 };

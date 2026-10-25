@@ -45,7 +45,32 @@ uniform vec3 uHot;
 uniform float uRing;      // 0 none; 0 → 1 over a part's last bar, 1 = passing through
 uniform float uFlash;     // 1 → 0: the light clearing in the next part
 
+// Framing and light (lib/framing.js).
+uniform float uAimX;      // camera aim off the tube axis, radians
+uniform float uAimY;
+uniform float uSway;      // aim drift per loop, radians (figure eight)
+uniform float uRoll;      // camera rock per loop, radians
+uniform float uCore;      // far light brightness
+uniform float uExposure;  // overall exposure
+
 float gPhase;
+
+vec2 rot(vec2 p, float a) {
+  float c = cos(a);
+  float s = sin(a);
+  return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+}
+
+// The camera's ray in its own frame: it rocks by uRoll and looks off the
+// axis by uAim, drifting by uSway, once per loop (phase 0..1).
+vec3 aimRay(vec2 uv, float phase) {
+  float a = TAU * phase;
+  vec3 d = vec3(rot(uv, uRoll * sin(a)), uFocal);
+  vec2 aim = vec2(uAimX, uAimY) + uSway * vec2(sin(a), 0.5 * sin(2.0 * a));
+  d.xz = rot(d.xz, aim.x);
+  d.yz = rot(d.yz, aim.y);
+  return normalize(d);
+}
 
 vec2 path(float z) {
   float w = TAU * z / uPeriod;
@@ -143,7 +168,8 @@ void main() {
   vec3 fw = normalize(ta - ro);
   vec3 rt = normalize(cross(vec3(0.0, 1.0, 0.0), fw));
   vec3 up = cross(fw, rt);
-  vec3 rd = normalize(uv.x * rt + uv.y * up + uFocal * fw);
+  vec3 d = aimRay(uv, gPhase);
+  vec3 rd = normalize(d.x * rt + d.y * up + d.z * fw);
 
   // Hit the wall; refine for the bending centreline.
   vec2 c0 = path(cz);
@@ -184,7 +210,7 @@ void main() {
   vec3 core = mix(uColB, uHot, 0.6);
   // Gaussian falloff keeps the near walls saturated, only the distance glows.
   float far = depth * uDepth;
-  col = mix(col, core, 1.0 - exp(-far * far));
+  col = mix(col, core * uCore, 1.0 - exp(-far * far));
 
   // Fly-through ring: a band of light just inside the wall, in the tube's
   // shape, that emerges from the core and rushes at the camera (distance
@@ -208,7 +234,7 @@ void main() {
   col = mix(col, core * 3.0, white);
 
   // Tonemap, vignette, gamma, dither.
-  col = 1.0 - exp(-col * 1.25);
+  col = 1.0 - exp(-col * 1.25 * uExposure);
   col *= 1.0 - 0.3 * dot(uv * 0.5, uv * 0.5);
   col = pow(col, vec3(1.0 / 2.2)) * uFade;
   col += (hash21(gl_FragCoord.xy + loopT) - 0.5) / 255.0;

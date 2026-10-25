@@ -97,6 +97,8 @@ export const createEventHorizon = () => {
   return {
     frag,
     createLook: createHiveLook,
+    // The honeycomb is 6-fold and seen head-on: the camera only rolls.
+    framing: { aim: false },
     describe: (look) => `hues ${look.palettes.map((pal) => pal.hue).join('→')} · ${look.uniforms.uGates} gates`,
     /** Load a part's notes (resolves when they're in). */
     prepare: (track) =>

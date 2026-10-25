@@ -42,7 +42,7 @@ export const createPortalLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}
   const pick = (arr) => arr[Math.floor(rand() * arr.length)];
 
   const palette = pick(PALETTES);
-  const sides = pick([0, 0, 0, 3, 4, 5, 6]);
+  const sides = pick([0, 0, 3, 4, 5, 6, 6]);
 
   // Speed comes from the BPM only (not the seed): `speed` tube radii pass
   // each beat, constant, and the loop is a whole number of beats.
@@ -70,9 +70,11 @@ export const createPortalLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}
       uSpin: pick([-1, 0, 0, 0, 0, 1]),
       uPathAmp: pathAmp,
       uPathFreq: pathFreq,
-      uFocal: range(1.1, 1.6),
-      uStretch: range(1.5, 4),
-      uWarp: range(0.3, 1),
+      // Wide, normal or long lens: picks that show, not a range that doesn't.
+      uFocal: pick([0.9, 1.3, 1.8]),
+      // Soft clouds or streaks; calm or swirling gas.
+      uStretch: pick([1.5, 4]),
+      uWarp: pick([0.3, 1]),
       uContrast: range(1.8, 2.8),
       uStars: range(0.4, 1),
       uDepth: range(0.06, 0.14),
@@ -90,6 +92,8 @@ export const createPortalLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}
   const sequence = [palette];
   while (sequence.length < 4) sequence.push(others.splice(Math.floor(rand() * others.length), 1)[0]);
   look.palettes = sequence.map((p) => ({ name: p.name, uDeep: lin(p.deep), uColA: lin(p.a), uColB: lin(p.b), uHot: lin(p.hot) }));
+  // The far light stays the same size on screen whatever the lens.
+  look.uniforms.uDepth *= 1.3 / look.uniforms.uFocal;
 
   return look;
 };

@@ -52,6 +52,14 @@ uniform float uShimmer;   // the long high note: soft glow swell
 uniform float uDrone;     // the drone: lasers breathe
 uniform float uFlash;     // part change: burn to white and clear
 
+// Framing and light (lib/framing.js).
+uniform float uAimX;      // camera aim off the tunnel axis, radians
+uniform float uAimY;
+uniform float uSway;      // aim drift per loop, radians (figure eight)
+uniform float uRoll;      // camera rock per loop, radians
+uniform float uCore;      // far light brightness
+uniform float uExposure;  // overall exposure
+
 float hash21(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -66,6 +74,17 @@ vec2 rot(vec2 p, float a) {
   float c = cos(a);
   float s = sin(a);
   return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+}
+
+// The camera's ray: it rocks by uRoll and looks off the axis by uAim,
+// drifting by uSway, once per loop (phase 0..1).
+vec3 aimRay(vec2 uv, float phase) {
+  float a = TAU * phase;
+  vec3 d = vec3(rot(uv, uRoll * sin(a)), uFocal);
+  vec2 aim = vec2(uAimX, uAimY) + uSway * vec2(sin(a), 0.5 * sin(2.0 * a));
+  d.xz = rot(d.xz, aim.x);
+  d.yz = rot(d.yz, aim.y);
+  return normalize(d);
 }
 
 // Uniform arrays only take loop indices in GLSL ES 1.0.
@@ -122,8 +141,10 @@ void main() {
   float minRes = min(uRes.x, uRes.y);
   vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / minRes * 2.0;
   float pixAng = 2.0 / (minRes * uFocal);
-  vec2 sv = rot(uv, uSpin * TAU / 6.0 * phase);
-  vec3 rd = normalize(vec3(sv, uFocal));
+  // The spin turns the tunnel, not the camera, so an off-axis vanishing
+  // point stays put.
+  vec3 rd = aimRay(uv, phase);
+  rd.xy = rot(rd.xy, uSpin * TAU / 6.0 * phase);
 
   // Constant speed: exactly one period per loop, i.e. set by the BPM.
   float cz = phase * uPeriod;
@@ -146,7 +167,7 @@ void main() {
 
   // The far tunnel melts into the light you fly toward (Gaussian falloff
   // keeps the near walls saturated).
-  vec3 core = mix(uFrame, uInner, 0.5) * 1.5;
+  vec3 core = mix(uFrame, uInner, 0.5) * 1.5 * uCore;
   float far = depth * uDepth;
   col = mix(col, core, 1.0 - exp(-far * far));
 
@@ -198,7 +219,7 @@ void main() {
   col = mix(col, mix(uFrame, vec3(1.0), 0.6) * 3.0, uFlash);
 
   // Tonemap, vignette, gamma, dither.
-  col = 1.0 - exp(-col * 1.2);
+  col = 1.0 - exp(-col * 1.2 * uExposure);
   col *= 1.0 - 0.25 * dot(uv * 0.5, uv * 0.5);
   col = pow(col, vec3(1.0 / 2.2)) * uFade;
   col += (hash21(gl_FragCoord.xy + uTime) - 0.5) / 255.0;

@@ -8,6 +8,7 @@ import { sketchMetadata } from '../sketchMetadata.js';
 import { createSingularity } from '../movements/singularity.js';
 import { createEventHorizon } from '../movements/eventHorizon.js';
 import { createContinuum } from '../movements/continuum.js';
+import { createFraming } from '../lib/framing.js';
 
 // Intergalactic Portals — one player for the whole suite, behind every
 // movement's page (/number-1 Singularity, /number-2 Event Horizon,
@@ -134,6 +135,10 @@ const sketch = (p) => {
     seed = String(next);
     const mv = movements[movement];
     look = mv.createLook(seed, { bpm, beats, speed });
+    // Framing and light come with every look, different per movement.
+    const framing = createFraming(seed, Number(movement), mv.framing);
+    Object.assign(look.uniforms, framing.uniforms);
+    look.framing = `${framing.light}${framing.offAxis ? ' off-axis' : ''}`;
     lookMovement = movement;
     // Any scalar uniform can be overridden from the URL, e.g. ?uGlow=0.5
     for (const [key, value] of params) {
@@ -141,7 +146,7 @@ const sketch = (p) => {
     }
     params.set('seed', seed);
     syncUrl();
-    if (info) info.textContent = `seed ${seed} · ${mv.describe(look)} · ${bpm.toFixed(1)} bpm · ${look.loopSec.toFixed(2)}s`;
+    if (info) info.textContent = `seed ${seed} · ${mv.describe(look)} · ${look.framing} · ${bpm.toFixed(1)} bpm · ${look.loopSec.toFixed(2)}s`;
     console.log('[PortalsSuite]', movement, look);
   };
 

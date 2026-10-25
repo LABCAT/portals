@@ -60,7 +60,7 @@ export const createHiveLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}) 
   const around = pick([2, 3, 4]);
   const stretch = range(1, 2.5);
 
-  return {
+  const look = {
     seed: String(seed),
     bpm,
     beats,
@@ -69,7 +69,8 @@ export const createHiveLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}) 
     uniforms: {
       uPeriod: period,
       uGates: pick([2, 2, 4]),
-      uFocal: range(1.1, 1.5),
+      // Wide, normal or long lens: picks that show, not a range that doesn't.
+      uFocal: pick([0.9, 1.3, 1.8]),
       uDepth: range(0.05, 0.1),
       // Sixth turns per loop (the tunnel is 6-fold, so it stays seamless).
       uSpin: pick([0, 0, 0, 1, -1]),
@@ -77,12 +78,16 @@ export const createHiveLook = (seed, { bpm = 120, beats = 16, speed = 2 } = {}) 
       // Circuit cells per period along the tunnel: about square, then
       // stretched into streaks.
       uCellsDeep: Math.max(2, Math.round((period * around) / (1.155 * stretch))),
-      uDensity: range(0.35, 0.7),
-      uGap: range(0.12, 0.3),
+      // Sparse or busy circuits, tight or open honeycomb.
+      uDensity: pick([0.3, 0.7]),
+      uGap: pick([0.12, 0.3]),
       uBand: range(0.12, 0.25),
       uDouble: rand() < 0.5 ? 1 : 0,
       uLasers: pick([6, 6, 12]),
       ...palettes[0].colours,
     },
   };
+  // The far light stays the same size on screen whatever the lens.
+  look.uniforms.uDepth *= 1.3 / look.uniforms.uFocal;
+  return look;
 };

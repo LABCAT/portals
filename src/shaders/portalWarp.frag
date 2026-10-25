@@ -48,7 +48,32 @@ uniform float uBack;      // Thor 2: Singularity's nebula floods in
 uniform float uLayer;     // 0..1 a third, fastest streak layer (Part C)
 uniform float uFlash;     // part change: burn to white and clear
 
+// Framing and light (lib/framing.js).
+uniform float uAimX;      // camera aim off the tunnel axis, radians
+uniform float uAimY;
+uniform float uSway;      // aim drift per loop, radians (figure eight)
+uniform float uRoll;      // camera rock per loop, radians
+uniform float uCore;      // far light brightness
+uniform float uExposure;  // overall exposure
+
 float gPhase;
+
+vec2 rot(vec2 p, float a) {
+  float c = cos(a);
+  float s = sin(a);
+  return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+}
+
+// The camera's ray: it rocks by uRoll and looks off the axis by uAim,
+// drifting by uSway, once per loop (phase 0..1).
+vec3 aimRay(vec2 uv, float phase) {
+  float a = TAU * phase;
+  vec3 d = vec3(rot(uv, uRoll * sin(a)), uFocal);
+  vec2 aim = vec2(uAimX, uAimY) + uSway * vec2(sin(a), 0.5 * sin(2.0 * a));
+  d.xz = rot(d.xz, aim.x);
+  d.yz = rot(d.yz, aim.y);
+  return normalize(d);
+}
 
 float hash21(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -147,7 +172,7 @@ void main() {
 
   // Constant speed: exactly one period per loop, i.e. set by the BPM.
   float cz = gPhase * uPeriod;
-  vec3 rd = normalize(vec3(uv, uFocal));
+  vec3 rd = aimRay(uv, gPhase);
   float dl = max(length(rd.xy), 1e-4);
   float t = min((1.0 + 0.06 * uBass) / dl, 60.0);
   vec3 p = rd * t;
@@ -182,7 +207,7 @@ void main() {
   // Depth: the far tunnel melts into the light you fly toward.
   // A small, soft light: the far walls fade into it rather than a bright
   // disc swallowing the middle of the frame.
-  vec3 core = uLight * (0.7 + 0.4 * uBack + 0.3 * uDrone);
+  vec3 core = uLight * uCore * (0.7 + 0.4 * uBack + 0.3 * uDrone);
   float far = depth * uDepth;
   col = mix(col, core, 1.0 - exp(-far * far));
 
@@ -190,7 +215,7 @@ void main() {
   col = mix(col, uLight * 3.0, white);
 
   // Tonemap, vignette, gamma, dither.
-  col = 1.0 - exp(-col * 1.25);
+  col = 1.0 - exp(-col * 1.25 * uExposure);
   col *= 1.0 - 0.35 * dot(uv * 0.5, uv * 0.5);
   col = pow(col, vec3(1.0 / 2.2)) * uFade;
   col += (hash21(gl_FragCoord.xy + loopT) - 0.5) / 255.0;
