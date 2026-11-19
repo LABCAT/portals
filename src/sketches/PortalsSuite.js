@@ -41,7 +41,8 @@ const hideLoader = () => {
   const loader = document.getElementById('loader');
   if (loader) {
     loader.classList.add('loading--complete');
-    loader.style.display = 'none';
+    // Let its 3s fade play onto the first frame, then take it out of the way.
+    setTimeout(() => (loader.style.display = 'none'), 3000);
   }
   const p5Loading = document.getElementById('p5_loading');
   if (p5Loading) p5Loading.style.display = 'none';
@@ -69,6 +70,7 @@ const sketch = (p) => {
   let hasPlayed = false;
   let idle = 0; // seconds run free before the first play
   let shown = false; // first frame drawn, loader hidden
+  let revealReady = () => {}; // the lib's hideLoader, held until the first frame
   let booted = false;
 
   // Suite MIDI: each movement's role notes (absolute song time), then each
@@ -289,6 +291,12 @@ const sketch = (p) => {
     // Frames are a pure function of song time, so a section cut can skip draws.
     p.captureSeekable = true;
 
+    // p.loadSong hides the loader as soon as the song is in, but the shaders
+    // only compile on the first draw, so the page background would show in
+    // between. Hold the reveal (loader fade, play icon, playback controls)
+    // until the first frame is drawn.
+    revealReady = p.hideLoader.bind(p);
+    p.hideLoader = () => {};
     await p.loadSong(SONG.audio, SONG.midi, (midi) => {
       for (const [n, mv] of Object.entries(movements)) {
         if (mv.roles) movementNotes[n] = extractRoleNotes(midi.tracks, mv.roles);
@@ -410,7 +418,11 @@ const sketch = (p) => {
     // compile on first use), so the page background never shows through.
     if (!shown) {
       shown = true;
-      requestAnimationFrame(hideLoader);
+      requestAnimationFrame(() => {
+        p.hideLoader = revealReady;
+        revealReady();
+        hideLoader();
+      });
     }
   };
 
