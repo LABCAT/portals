@@ -3,26 +3,28 @@
 Audio-reactive portal animations at https://portals.labcat.nz
 
 Two modes, one engine:
-- **Customs** (`PortalsNo1`, `PortalsNo2`, …) — fixed `mp3 + .mid` in `public/audio/`, hybrid MIDI cues + FFT like other LABCAT series.
+- **The suite** — one song (`public/audio/IntergalticPortals.mp3` + `.mid`) playing three movements of three parts, with MIDI cues like the other LABCAT series.
 - **Upload** (`/play`) — user drops any audio file, pure FFT spectrum visualizer, no MIDI needed.
 
 Follow on Instagram → https://www.instagram.com/labcat2020/
 
 ## Intergalactic Portals (the suite)
 
-Three movements of three 8-bar parts at 97 bpm, each part its own `.mp3` +
-`.mid` in `public/audio/` (listed in `src/audioTracks.js`) so each can be a
-reel. One player (`src/sketches/PortalsSuite.js`, movements in
-`src/movements/`) sits behind every movement's page: a part flows gaplessly
-into the next, across movements too, switching visuals and address without a
-reload; the panel's prev/next walk the whole suite. Capture
-(`labcat-capture`) renders a single part, once.
+Three movements of three 8-bar parts at 97 bpm, all one song
+(`public/audio/IntergalticPortals.mp3` + `.mid`). The movements and their nine
+parts are bar ranges in `src/audioTracks.js`; the suite `.mid` keeps the same
+17-track slot layout the old per-part files had, with notes at absolute song
+time. One player (`src/sketches/PortalsSuite.js`, movements in
+`src/movements/`) sits behind every movement's page: the panel's prev/next
+walk all nine parts, the address follows the movement without a reload, and the
+current movement / part / time-within-part are derived from absolute song time.
+Capture (`labcat-capture`) renders the whole suite, one movement, or one part:
 
-| URL | Plays |
-|---|---|
-| `/number-1` | Singularity A → B → C → Event Horizon A → … |
-| `/number-2?part=b` | starts on Event Horizon Part B (capture: that part only) |
-| `/number-3` | Continuum A → B → C → Singularity A → … |
+| URL | Plays (live) | Capture |
+|---|---|---|
+| `/number-1` | Singularity, part A (prev/next walks the suite) | whole suite |
+| `/number-2?part=b` | Event Horizon, part B | part B only |
+| `/number-3?movement=3` | Continuum, part A | the whole Continuum movement |
 
 ## #PortalsNo1 Singularity
 https://portals.labcat.nz/number-1/

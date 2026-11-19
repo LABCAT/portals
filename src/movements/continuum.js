@@ -1,6 +1,5 @@
 import frag from '../shaders/portalWarp.frag?raw';
 import { createWarpLook } from '../lib/warpLook.js';
-import { loadPartNotes } from '../lib/partMidi.js';
 
 // Movement 3, Continuum: a flight down a hyperspace tunnel (portalWarp.frag),
 // streaks of starlight rushing past, lit by each part's own MIDI. Every lead
@@ -13,8 +12,8 @@ import { loadPartNotes } from '../lib/partMidi.js';
 // flash it. Between parts the tunnel spins up and burns to white, and the
 // next part opens out of it.
 
-// Track slots in this movement's part exports (the same in every part).
-const ROLES = { lead: 6, bass: 2, pulse: 4, stab: 9, shimmer: 11, drone: 12, thor: 14 };
+// Track slots in the suite MIDI (the same layout every old part export had).
+export const ROLES = { lead: 6, bass: 2, pulse: 4, stab: 9, shimmer: 11, drone: 12, thor: 14 };
 // The part change: the tunnel spins up over the last SPIN_BEATS and burns
 // to white over the last beat, clearing over half a beat.
 const SPIN_BEATS = 2;
@@ -95,24 +94,15 @@ const changeAt = (times, tm, beat) => {
   return { index: Math.max(0, k - 1), dip: Math.min(rise, fall) };
 };
 
-export const createContinuum = () => {
-  const notesByUrl = new Map();
-
-  return {
-    frag,
-    createLook: createWarpLook,
-    describe: (look) => `hues ${look.palettes.map((pal) => pal.hue).join('→')}`,
-    /** Load a part's notes (resolves when they're in). */
-    prepare: (track) =>
-      track.midi
-        ? loadPartNotes(track.midi, ROLES).then((n) => {
-            notesByUrl.set(track.midi, n);
-          })
-        : Promise.resolve(),
-    // This movement's per-frame uniforms; returns the brightness to fold
-    // into uFade (the change dips).
-    draw: (shader, look, f) => {
-      const notes = notesByUrl.get(f.track?.midi) ?? null;
+export const createContinuum = () => ({
+  frag,
+  roles: ROLES,
+  createLook: createWarpLook,
+  describe: (look) => `hues ${look.palettes.map((pal) => pal.hue).join('→')}`,
+  // This movement's per-frame uniforms; returns the brightness to fold
+  // into uFade (the change dips).
+  draw: (shader, look, f) => {
+      const notes = f.notes ?? null;
       const beat = 60 / f.bpm;
       const tm = f.tm;
       const e = envelopes(notes, tm, f.bpm);
@@ -160,6 +150,5 @@ export const createContinuum = () => {
       shader.setUniform('uTurn', turn);
       shader.setUniform('uFlash', flash);
       return flash > 0 ? 1 : change.dip;
-    },
-  };
-};
+  },
+});
