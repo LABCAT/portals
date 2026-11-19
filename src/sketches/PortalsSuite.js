@@ -67,6 +67,7 @@ const sketch = (p) => {
   const shaders = {};
   let info = null;
   let hasPlayed = false;
+  let idle = 0; // seconds run free before the first play
   let booted = false;
 
   // Suite MIDI: each movement's role notes (absolute song time), then each
@@ -207,6 +208,13 @@ const sketch = (p) => {
     if (p.captureInProgress) return p.frameNumber / 60;
     if (freezeT !== null) return freezeT;
     if (p.song?.isPlaying()) hasPlayed = true;
+    // Before the first play the flight runs free, looping the page's part,
+    // so the page is alive on arrival.
+    if (!hasPlayed) {
+      idle += p.deltaTime / 1000;
+      const r = PART_RANGES[startPartId];
+      return r.start + (idle % (r.end - r.start));
+    }
     const t = p.getSongPlaybackTime();
     return Number.isFinite(t) ? t : 0;
   };
@@ -260,7 +268,6 @@ const sketch = (p) => {
   };
 
   p.setup = async () => {
-    hideLoader();
     if (params.get('fps') !== '0') p.enableFpsIndicator();
     window.toggleFps = () => p.toggleFpsIndicator();
     p.createCanvas(window.innerWidth, window.innerHeight, p.WEBGL);
@@ -289,6 +296,8 @@ const sketch = (p) => {
         partNotes[id] = sliceNotes(movementNotes[part.movement], PART_RANGES[id].start, PART_RANGES[id].end);
       }
     });
+    // The LabCat loader stays up until there's something to draw.
+    hideLoader();
 
     clock = p.usePartPlayer({
       parts: SUITE_PARTS,
