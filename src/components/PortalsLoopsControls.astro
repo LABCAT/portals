@@ -1,20 +1,12 @@
 ---
 // Portal Loops controls, slotted into the lab ControlPanel's slide-out.
-// Talks to PortalsLoops.js through window events:
-//   dispatch 'portals:file'        → { detail: { file } }  play a local track
-//   dispatch 'portals:auto-toggle'                         auto look on/off (hold)
-//   dispatch 'portals:next-look'                           new random look now
-//   listen   'portals:auto'        → { detail: { on } }
+// Talks to PortalsSuite.js through window events:
+//   dispatch 'portals:auto-toggle'  auto look on/off (new look per part)
+//   dispatch 'portals:next-look'    new random look now
+//   listen   'portals:auto'         → { detail: { on } }
 ---
 
 <div class="portals-loops-controls">
-  <label class="portals-loops-controls__btn" data-tip="Play your own track">
-    <input type="file" accept="audio/*" data-loops-file hidden />
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"></path>
-    </svg>
-    <span class="visually-hidden">Play your own track</span>
-  </label>
   <button
     type="button"
     class="portals-loops-controls__btn"
@@ -112,15 +104,9 @@
 </style>
 
 <script>
-  const file = document.querySelector<HTMLInputElement>('[data-loops-file]');
   const auto = document.querySelector<HTMLButtonElement>('[data-loops-auto]');
   const next = document.querySelector<HTMLButtonElement>('[data-loops-next]');
 
-  file?.addEventListener('change', () => {
-    const picked = file.files?.[0];
-    if (picked) window.dispatchEvent(new CustomEvent('portals:file', { detail: { file: picked } }));
-    file.value = '';
-  });
   auto?.addEventListener('click', () => window.dispatchEvent(new CustomEvent('portals:auto-toggle')));
   next?.addEventListener('click', () => window.dispatchEvent(new CustomEvent('portals:next-look')));
 

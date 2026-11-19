@@ -46,13 +46,13 @@ export const createSingularity = (params) => {
 
       if (!paletteBars) return 1;
       const sec = (paletteBars * 4 * 60) / f.bpm;
-      const seg = Math.floor(f.t / sec);
+      const seg = Math.floor(f.tm / sec);
       const n = look.palettes.length;
       const pal = look.palettes[((seg % n) + n) % n];
       for (const key of PALETTE_KEYS) shader.setUniform(key, pal[key]);
       // The fly-through replaces the dip on its bar line.
       if (ring > 0 || flash > 0) return 1;
-      const into = f.t - seg * sec;
+      const into = f.tm - seg * sec;
       const toNext = sec - into;
       const x = toNext < DIP_OUT ? toNext / DIP_OUT : into < DIP_IN ? into / DIP_IN : 1;
       return DIP_FLOOR + (1 - DIP_FLOOR) * x * x * (3 - 2 * x);

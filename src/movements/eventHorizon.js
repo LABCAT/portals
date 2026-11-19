@@ -1,6 +1,5 @@
 import frag from '../shaders/portalHive.frag?raw';
 import { createHiveLook } from '../lib/hiveLook.js';
-import { loadPartNotes } from '../lib/partMidi.js';
 
 // Movement 2, Event Horizon: a flight down a neon hexagonal tunnel through
 // honeycomb gates (portalHive.frag), lit by each part's own MIDI. Every
@@ -11,8 +10,8 @@ import { loadPartNotes } from '../lib/partMidi.js';
 // C's stabs flare the lasers and its arps spark along the circuits. Between
 // parts the picture burns to white and clears into the next.
 
-// Track slots in this movement's part exports (the same in every part).
-const ROLES = { lead: 6, bass: 2, arp: 4, stab: 9, shimmer: 11, drone: 12 };
+// Track slots in the suite MIDI (the same layout every old part export had).
+export const ROLES = { lead: 6, bass: 2, arp: 4, stab: 9, shimmer: 11, drone: 12 };
 // The part change: burn to white over the last beat, clear over half a beat.
 const FLASH_IN_BEATS = 1;
 const FLASH_OUT_BEATS = 0.5;
@@ -91,26 +90,17 @@ const noteChange = (notes, tm, len, bpm, count) => {
   return { palette: Math.max(0, k - 1) % count, dip: Math.min(rise, fall) };
 };
 
-export const createEventHorizon = () => {
-  const notesByUrl = new Map();
-
-  return {
-    frag,
-    createLook: createHiveLook,
-    // The honeycomb is 6-fold and seen head-on: the camera only rolls.
-    framing: { aim: false },
-    describe: (look) => `hues ${look.palettes.map((pal) => pal.hue).join('→')} · ${look.uniforms.uGates} gates`,
-    /** Load a part's notes (resolves when they're in). */
-    prepare: (track) =>
-      track.midi
-        ? loadPartNotes(track.midi, ROLES).then((n) => {
-            notesByUrl.set(track.midi, n);
-          })
-        : Promise.resolve(),
-    // This movement's per-frame uniforms; returns the brightness to fold
-    // into uFade (the note dips).
-    draw: (shader, look, f) => {
-      const notes = notesByUrl.get(f.track?.midi) ?? null;
+export const createEventHorizon = () => ({
+  frag,
+  roles: ROLES,
+  createLook: createHiveLook,
+  // The honeycomb is 6-fold and seen head-on: the camera only rolls.
+  framing: { aim: false },
+  describe: (look) => `hues ${look.palettes.map((pal) => pal.hue).join('→')} · ${look.uniforms.uGates} gates`,
+  // This movement's per-frame uniforms; returns the brightness to fold
+  // into uFade (the note dips).
+  draw: (shader, look, f) => {
+      const notes = f.notes ?? null;
       const e = envelopes(notes, f.tm, f.bpm);
       const change = noteChange(notes, f.tm, f.len, f.bpm, look.palettes.length);
       for (const [name, value] of Object.entries(look.palettes[change.palette].colours)) shader.setUniform(name, value);
@@ -134,6 +124,5 @@ export const createEventHorizon = () => {
       }
       shader.setUniform('uFlash', flash);
       return change.dip;
-    },
-  };
-};
+  },
+});
