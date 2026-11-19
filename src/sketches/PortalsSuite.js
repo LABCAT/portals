@@ -68,6 +68,7 @@ const sketch = (p) => {
   let info = null;
   let hasPlayed = false;
   let idle = 0; // seconds run free before the first play
+  let shown = false; // first frame drawn, loader hidden
   let booted = false;
 
   // Suite MIDI: each movement's role notes (absolute song time), then each
@@ -296,8 +297,6 @@ const sketch = (p) => {
         partNotes[id] = sliceNotes(movementNotes[part.movement], PART_RANGES[id].start, PART_RANGES[id].end);
       }
     });
-    // The LabCat loader stays up until there's something to draw.
-    hideLoader();
 
     clock = p.usePartPlayer({
       parts: SUITE_PARTS,
@@ -407,6 +406,12 @@ const sketch = (p) => {
     });
     shader.setUniform('uFade', dip);
     p.plane(p.width, p.height);
+    // The LabCat loader stays up until the first frame is drawn (the shaders
+    // compile on first use), so the page background never shows through.
+    if (!shown) {
+      shown = true;
+      requestAnimationFrame(hideLoader);
+    }
   };
 
   p.windowResized = () => p.resizeCanvas(window.innerWidth, window.innerHeight);
