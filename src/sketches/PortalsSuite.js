@@ -167,6 +167,7 @@ const sketch = (p) => {
     if (!mv) return;
     if (booted && id === partId) return; // draw() already flowed into it
     partId = id;
+    arrived = false; // picked (prev / next), not flowed into
     if (mv !== movement) enterMovement(mv);
     if (!booted) return;
     newPartLook();
@@ -196,6 +197,7 @@ const sketch = (p) => {
     const last = PART_RANGES[PART_IDS[PART_IDS.length - 1]];
     if (playing || !clock || clock.position() < last.end - 0.05) return;
     clock.setPart(PART_IDS[0]);
+    arrived = true; // the last part's ring flows into the first
     clock.play();
   };
 
@@ -212,11 +214,18 @@ const sketch = (p) => {
   // Part-change timing for the movement's transition (ring / dip / burn),
   // only while a part plays: never before the first play. In capture it is a
   // pure function of time, so a movement/full-suite reel shows every boundary.
-  const flight = (tm, len) => {
+  // A part opens out of the white only when the music flowed into it from the
+  // part before (as heard live, or crossed in a capture) — never on the first
+  // frame of a capture, on play, or after a jump.
+  let arrived = false;
+  let lastT = null;
+  const flight = (tm, len, partEnd) => {
     if (!len || freezeT !== null) return null;
-    if (p.captureInProgress) return { toEnd: len - tm, since: tm };
-    if (!hasPlayed) return null;
-    return { toEnd: len - tm, since: tm };
+    if (!p.captureInProgress && !hasPlayed) return null;
+    // A capture ends on a cut, not on a ring into a part that isn't in it.
+    const end = p.captureRange?.end ?? p.song?.duration?.();
+    const lastInCapture = p.captureInProgress && Number.isFinite(end) && partEnd >= end - 0.05;
+    return { toEnd: lastInCapture ? Infinity : len - tm, since: arrived ? tm : null };
   };
 
   // Absolute song time → the part we're in, time within it, and its notes.
@@ -353,6 +362,9 @@ const sketch = (p) => {
 
     const changedMovement = state.movement !== movement;
     const changedPart = state.partId !== partId;
+    // Flowed in: time ran on continuously across the boundary (no jump).
+    if (changedPart) arrived = lastT !== null && t >= lastT && t - lastT < 0.5;
+    lastT = t;
     if (changedMovement) enterMovement(state.movement);
     if (changedPart) partId = state.partId;
     if (p.captureInProgress) {
@@ -382,7 +394,7 @@ const sketch = (p) => {
       len: state.len,
       notes: state.notes,
       track: { part: state.part },
-      flight: flight(state.tm, state.len),
+      flight: flight(state.tm, state.len, PART_RANGES[state.partId].end),
     });
     shader.setUniform('uFade', dip);
     p.plane(p.width, p.height);
